@@ -19,7 +19,7 @@
       --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
     *{box-sizing:border-box;}
-    body{font-family:var(--font); margin:0; background:var(--soft2); color:#111; padding-bottom:19px;}
+    body{font-family:var(--font); margin:0; background:var(--soft2); color:#111; padding-bottom:44px;}
 
     .sticky-header{
       position: sticky;
@@ -139,7 +139,7 @@
     }
     .searchbar.has-value .search-clear{ display: block; }
 
-    .wrap{max-width:1200px; margin: 0 auto; padding: 0 max(0px, calc((min(100vw, 1200px) - 986px) / 2)) 24px;}
+    .wrap{max-width:1200px; margin: 0 auto; padding: 0 max(0px, calc((min(100vw, 1200px) - 986px) / 2)) 0;}
     .monthbar{
       display:flex;
       align-items:center;
@@ -589,6 +589,61 @@
       .weekday-header-inner{ width: 100%; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     }
 
+    /* ── REFRESH BAR ── */
+    .refresh-bar{
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 20px 12px 0;
+      display: flex;
+      justify-content: center;
+    }
+    .refresh-btn{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border: var(--border);
+      border-radius: 999px;
+      background: var(--bg);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .refresh-btn:hover{ background: var(--soft); color: #333; }
+    .refresh-btn:active{ transform: translateY(1px); }
+    .refresh-btn.spinning .refresh-icon{ animation: spin 0.7s linear infinite; }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+    .refresh-icon{ font-size: 13px; display: inline-block; }
+
+    @media (max-width: 986px){
+      .refresh-bar{ padding: 16px 12px 0; }
+    }
+
+    /* ── INFO PANEL ── */
+    .info-panel{
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 20px 12px 20px;
+    }
+    .info-panel-text{
+      margin: 0;
+      padding: 14px 16px;
+      border: var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 986px){
+      .info-panel{ padding: 16px 0 16px; }
+      .info-panel-text{ border-radius: 0; border-left: none; border-right: none; }
+    }
 
     /* MODAL: iframe 오버레이 */
     .modal-overlay{
@@ -867,6 +922,22 @@
     </div>
   </div>
 
+  <!-- REFRESH BAR -->
+  <div class="refresh-bar">
+    <button class="refresh-btn" id="refresh-btn" type="button">
+      <span class="refresh-icon" aria-hidden="true">↻</span>
+      새로고침
+    </button>
+  </div>
+
+  <!-- INFO PANEL -->
+  <div class="info-panel" id="info-panel">
+    <p class="info-panel-text">
+      비공개 베타 | 마지막 업데이트 26-04-08
+    </p>
+  </div>
+  <!-- /INFO PANEL -->
+
   <!-- MODAL: iframe 오버레이 마크업 -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-container" id="modal-container">
@@ -874,7 +945,7 @@
         <span class="modal-summary" id="modal-summary"></span>
         <button class="modal-close" id="modal-close" type="button" aria-label="닫기">✕</button>
       </div>
-      <iframe class="modal-iframe" id="modal-iframe" src="about:blank" allowfullscreen></iframe>
+      <iframe class="modal-iframe" id="modal-iframe" src="about:blank" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
     </div>
   </div>
 
@@ -1017,9 +1088,14 @@
         const observers2El = el.querySelector(".slot-observers2");
         if(observersEl){
           const names = Array.isArray(state?.observers) ? state.observers : [];
-          observersEl.innerHTML = names.slice(0, 2).map(n => `<span>${n}</span>`).join("");
+          const makeSpans = ns => ns.map(n => {
+            const s = document.createElement("span");
+            s.textContent = n;
+            return s;
+          });
+          observersEl.replaceChildren(...makeSpans(names.slice(0, 2)));
           if(observers2El){
-            observers2El.innerHTML = names.slice(2, 3).map(n => `<span>${n}</span>`).join("");
+            observers2El.replaceChildren(...makeSpans(names.slice(2, 3)));
           }
         }
       });
@@ -1325,7 +1401,8 @@
       item.innerHTML = `<span class="bi-date">${b.dateStr}</span>`
         + `<span class="bi-time">${b.timeLabel}</span>`
         + `<span class="bi-room">${b.room}번방</span>`
-        + `<span class="bi-clinician">${biClinician}</span>`;
+        + `<span class="bi-clinician"></span>`;
+      item.querySelector(".bi-clinician").textContent = biClinician;
       myBookingsList.appendChild(item);
     });
 
@@ -1837,6 +1914,22 @@
   const authReset   = document.getElementById("auth-reset");
 
   initApp();
+
+  /* 새로고침 버튼 */
+  document.getElementById("refresh-btn").addEventListener("click", async function(){
+    if(this.classList.contains("spinning")) return;
+    this.classList.add("spinning");
+    // 캐시 초기화 후 재요청
+    Object.keys(slotCache).forEach(k => delete slotCache[k]);
+    try{
+      await fetchInit(currentYear, currentMonth);
+      renderMonth(currentYear, currentMonth);
+    } catch(e){
+      if(e.code === "AUTH") handleAuthFailure();
+    } finally{
+      this.classList.remove("spinning");
+    }
+  });
 
   /* MODAL: 초기화 */
   const modalOverlay   = document.getElementById("modal-overlay");

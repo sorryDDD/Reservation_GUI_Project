@@ -1,0 +1,2286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Reservation GUI Alpha</title>
+  <style>
+    :root{
+      --cell-pad: 10px;
+      --border: 1px solid #d0d0d0;
+      --muted: #6b6b6b;
+      --bg: #ffffff;
+      --soft: #f6f6f6;
+      --soft2:#fafafa;
+      --radius: 10px;
+      --slot-h: 31px;
+      --slot-gap: 4px;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+    *{box-sizing:border-box;}
+    body{font-family:var(--font); margin:0; background:var(--soft2); color:#111; padding-bottom:19px;}
+
+    .sticky-header{
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .kv{
+      display:flex;
+      gap: 6px;
+      align-items:center;
+      background: var(--bg);  
+      border: var(--border);
+      border-radius: 999px;
+      padding: 3px 10px;
+      white-space:nowrap;
+      font-size: 14px;
+    }
+    .kv .k{color: var(--muted); font-weight:600;}
+    .kv input{
+      font: inherit;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-weight: 800;
+      width: 56px;
+    }
+    .kv input::placeholder{color: var(--muted); font-weight: 700;}
+    .role-switch{
+      position: relative;
+      display: flex;
+      background: #e5e5e5;
+      border-radius: 999px;
+      padding: 2px;
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .role-switch-thumb{
+      position: absolute;
+      top: 2px; left: 2px;
+      width: calc(50% - 2px);
+      height: calc(100% - 4px);
+      background: #fff;
+      border-radius: 999px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+      transition: transform 0.2s ease;
+    }
+    .role-switch.is-clinician .role-switch-thumb{
+      transform: translateX(100%);
+    }
+    .role-switch-label{
+      position: relative;
+      z-index: 1;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #888;
+      border-radius: 999px;
+      transition: color 0.2s ease;
+      white-space: nowrap;
+    }
+    .role-switch-label[data-role="observer"]{ color: #2a7a3a; }
+    .role-switch.is-clinician .role-switch-label[data-role="observer"]{ color: #888; }
+    .role-switch.is-clinician .role-switch-label[data-role="clinician"]{ color: #2a7a3a; }
+
+    @media (max-width: 480px) {
+      .kv input{ width: 56px; }
+    }
+
+    .nav-row{
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: var(--border);
+      background: rgba(250,250,250,.92);
+      backdrop-filter: blur(6px);
+    }
+    .searchbar{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 1 1 0;
+      min-width: 0;
+      border: var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      background: var(--bg);
+    }
+    .searchbar .search-icon{
+      color: var(--muted);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .searchbar input{
+      flex: 1 1 auto;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #111;
+    }
+    .searchbar input::placeholder{ color: var(--muted); font-weight: 600; }
+    .searchbar input::-webkit-search-cancel-button{ -webkit-appearance: none; appearance: none; }
+    .searchbar .search-clear{
+      appearance: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 0 2px;
+      line-height: 1;
+      display: none;
+    }
+    .searchbar.has-value .search-clear{ display: block; }
+
+    .wrap{max-width:1200px; margin: 0 auto; padding: 0 max(0px, calc((min(100vw, 1200px) - 986px) / 2)) 24px;}
+    .monthbar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-shrink: 0;
+    }
+    .monthbar .spacer{ display: none; }
+    .monthbar button{
+      appearance:none;
+      border: var(--border);
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 800;
+      cursor:pointer;
+      line-height: 1;
+    }
+    .monthbar button:active{transform: translateY(1px);}
+    .monthbar .label{
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+    }
+
+    .day.out{background: var(--soft2);}
+    .day.out .date{color: var(--muted);}
+
+    .calendar{
+      background:var(--bg);
+      border:var(--border);
+      border-top: none;
+      border-radius: 0;
+      overflow-x:auto;
+      overflow-y:hidden;
+      box-shadow: 0 1px 10px rgba(0,0,0,.03);
+    }
+    .calendar-inner{
+      min-width: 0;
+    }
+    .calendar-inner.expanded{
+      min-width: 980px;
+    }
+
+
+    .weekday-header{
+      width: 100%;
+      background: rgba(250,250,250,.92);
+      backdrop-filter: blur(6px);
+      border-bottom: var(--border);
+    }
+    .weekday-header-inner{
+      display: grid;
+      grid-template-columns: repeat(5, min(20vw, 196px));
+      width: fit-content;
+      margin: 0 auto;
+    }
+    .weekday-header-cell{
+      padding: 5px var(--cell-pad);
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(250,250,250,.92);
+    }
+    /* 오버레이 내에서는 요일 헤더 숨김 */
+    .day-overlay .weekday-header{ display: none; }
+
+    .weeks{display:block;}
+    .week{
+      display:grid;
+      grid-template-columns: repeat(5, min(20vw, 196px));
+      column-gap: 1px;
+      background: #d0d0d0;
+      border-bottom: var(--border);
+    }
+    .week:last-child{border-bottom:none;}
+
+    .day{
+      padding: var(--cell-pad) var(--cell-pad) 0;
+      display:flex;
+      flex-direction:column;
+      gap: 0;
+      background: #fff;
+    }
+    .day:nth-child(2){/* first day cell after axis */}
+
+    .date{
+      font-weight:900;
+      font-size:13px;
+      line-height: 1;
+      background: var(--soft);
+      border-bottom: var(--border);
+      margin: calc(-1 * var(--cell-pad)) calc(-1 * var(--cell-pad)) 0;
+      padding: var(--cell-pad);
+    }
+
+    .micro{
+      display:flex;
+      flex-direction:column;
+      gap: 0;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    /* Per-timeBand collapse (주 단위 독립) — .week 클래스로 토글 */
+    .slot-row-body{
+      display: grid;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.28s ease;
+    }
+    .week.tb-open-T1 .slot-row[data-time-key="T1"] .slot-row-body,
+    .week.tb-open-T2 .slot-row[data-time-key="T2"] .slot-row-body,
+    .week.tb-open-T3 .slot-row[data-time-key="T3"] .slot-row-body,
+    .week.tb-open-T4 .slot-row[data-time-key="T4"] .slot-row-body,
+    .week.tb-open-T5 .slot-row[data-time-key="T5"] .slot-row-body{ max-height: 420px; }
+
+    .slots{
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+    }
+
+    .slot-row{
+      display:flex;
+      flex-direction:column;
+      gap: 0;
+      border-top: var(--border);
+      padding: 5px 0;
+    }
+    .slot-row:first-child{ border-top: none; }
+    .slot-row:last-child{ border-bottom: none; }
+    .slot-row-header{
+      display:flex;
+      align-items:center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #aaa;
+      cursor: pointer;
+      user-select: none;
+      padding: 3px 0;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .slot-row-header:hover{ color: #555; }
+    .week.tb-open-T1 .slot-row[data-time-key="T1"] .slot-row-header,
+    .week.tb-open-T2 .slot-row[data-time-key="T2"] .slot-row-header,
+    .week.tb-open-T3 .slot-row[data-time-key="T3"] .slot-row-header,
+    .week.tb-open-T4 .slot-row[data-time-key="T4"] .slot-row-header,
+    .week.tb-open-T5 .slot-row[data-time-key="T5"] .slot-row-header{ color: #111; }
+    .al-icon{ font-size: 9px; }
+    .header-dots{
+      margin-left: auto; flex-shrink: 0;
+      display: flex; gap: 3px; align-items: center;
+    }
+    .user-dot{
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0; display: none;
+      background: #f0c040;
+    }
+    .avail-dot{
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0; display: none;
+      background: #4caf50;
+    }
+    .slot-row-header.has-avail:not(.has-user) .avail-dot{ display: block; }
+    .slot-row-header.has-match .slot-row-label{ background-color: #dbeafe; }
+    .slot-row-header.has-match:hover .slot-row-label,
+    .week.tb-open-T1 .slot-row[data-time-key="T1"] .slot-row-header.has-match .slot-row-label,
+    .week.tb-open-T2 .slot-row[data-time-key="T2"] .slot-row-header.has-match .slot-row-label,
+    .week.tb-open-T3 .slot-row[data-time-key="T3"] .slot-row-header.has-match .slot-row-label,
+    .week.tb-open-T4 .slot-row[data-time-key="T4"] .slot-row-header.has-match .slot-row-label,
+    .week.tb-open-T5 .slot-row[data-time-key="T5"] .slot-row-header.has-match .slot-row-label{ background-color: #b3d4ff; }
+    .slot-row-header.has-user .user-dot{ display: block; }
+    .slot.s-search-match{
+      position: relative;
+      overflow: visible;
+    }
+    .slot.s-search-match::after{
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border: 2px solid #2563eb;
+      border-radius: 9px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .slot-row-body{
+      grid-template-columns: 1fr;
+      gap: var(--slot-gap);
+      padding-top: var(--slot-gap);
+    }
+    .slot{
+      border: var(--border);
+      border-radius: 8px;
+      background: #fff;
+      min-height: var(--slot-h);
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 22px 1.3fr 1fr 1fr;
+      align-items: stretch;
+      color: #2a2a2a;
+      user-select: none;
+      overflow: hidden;
+      -webkit-transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      contain: layout;
+    }
+    .slot-room{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      border-right: var(--border);
+      padding: 4px 2px;
+      flex-shrink: 0;
+    }
+    .slot-clinician{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      border-right: var(--border);
+      min-width: 0;
+      overflow: hidden;
+    }
+    .slot-observers{
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      min-width: 0;
+      gap: 1px;
+      min-height: 46px; /* 2줄(≈29px) + gap 1px + padding 8px — 모든 슬롯 높이 균일화 */
+      max-height: 46px;
+      overflow: hidden;
+    }
+    .slot-observers2{
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-left: var(--border);
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      min-width: 0;
+      gap: 1px;
+      max-height: 46px;
+      overflow: hidden;
+    }
+    .slot:hover{outline: 2px solid rgba(0,0,0,.08);}
+    .slot:active{transform: translateY(1px);}
+    .slot.selected{outline: 2px solid rgba(0,0,0,.18); background: var(--soft);}
+
+    /* Slot state classes (future: Sheet-driven rendering) */
+    .slot.s-booked{background: var(--soft); color: var(--muted); cursor: not-allowed;}
+    .slot.s-blocked{background: var(--soft); color: var(--muted); cursor: not-allowed;}
+    .slot.s-pending{background: var(--soft);}
+
+    /* Proxy-driven states */
+    .slot.s-inactive{background:#f2f2f2; color:#ccc; border-color:#e8e8e8; cursor:not-allowed;}
+    .slot.s-available{background:#f0faf2; border-color:#9ecfa8; color:#2a7a3a;}
+    .slot.s-full{background:#fff3f3; border-color:#f0b0b0; color:#b44; cursor:not-allowed;}
+
+    /* 2주 제한 — 같은 임상가 재예약 불가 */
+    .slot.s-restricted{background:#f5f0ff; border-color:#c4b5fd; color:#7c3aed; cursor:not-allowed;}
+
+    /* 현재 사용자가 관찰자로 포함된 슬롯 */
+    .slot.s-user-match{ background:#fefce8; border-color:#f5d87a; color:#7a5800; }
+
+    /* 임상가 모드 — 모든 슬롯 클릭 불가 */
+    .calendar.mode-clinician .slot{ cursor: not-allowed !important; }
+
+    /* Loading overlay on calendar */
+    .calendar.is-loading{opacity:.5; pointer-events:none;}
+    .loading-badge{
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 200;
+      font-size: 13px;
+      font-weight: 700;
+      color: #333;
+      padding: 14px 24px;
+      border: var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      display: none;
+      pointer-events: none;
+    }
+    .loading-badge.visible{ display: block; }
+    body.is-loading::before{
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.18);
+      z-index: 199;
+      pointer-events: none;
+    }
+
+    /* 제한 사유 팝업 */
+    .restriction-popup-overlay{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .restriction-popup{
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px 24px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+    .restriction-popup-title{
+      font-weight: 800;
+      font-size: 15px;
+      color: #7c3aed;
+      margin-bottom: 6px;
+    }
+    .restriction-popup-slot{
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .restriction-popup-section{
+      margin-bottom: 12px;
+    }
+    .restriction-popup-reason{
+      font-weight: 700;
+      font-size: 13px;
+      color: #333;
+      margin-bottom: 6px;
+    }
+    .restriction-popup-table{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      color: #555;
+    }
+    .restriction-popup-table th{
+      text-align: left;
+      font-weight: 600;
+      color: #888;
+      padding: 4px 6px;
+      border-bottom: 1px solid #eee;
+      white-space: nowrap;
+    }
+    .restriction-popup-table td{
+      padding: 4px 6px;
+      white-space: nowrap;
+    }
+    .restriction-popup-close{
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .restriction-popup-close:active{ opacity: 0.8; }
+
+    /* 내 예약 현황 — 하단 고정 바 */
+    .my-bookings{
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(6px);
+      border-top: var(--border);
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+    .my-bookings-bar{
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px 5px 16px; gap: 12px;
+    }
+    .my-bookings-handle{
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 700; color: #333;
+      cursor: pointer; user-select: none;
+      flex-shrink: 0;
+    }
+    .my-bookings-icon{
+      font-size: 11px; transition: transform 0.25s ease;
+    }
+    .my-bookings.open .my-bookings-icon{
+      transform: rotate(180deg);
+    }
+    .my-bookings-list{
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .my-bookings.open .my-bookings-list{
+      max-height: 300px; overflow-y: auto;
+    }
+    .my-bookings-list .booking-item{
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 16px;
+      font-size: 12px; color: #333;
+      border-top: 1px solid #eee;
+    }
+    .booking-item .bi-date{
+      font-weight: 700; min-width: 90px; text-align: center;
+      border-right: 1px solid #e0e0e0; padding-right: 10px;
+    }
+    .booking-item .bi-time{
+      color: var(--muted); font-weight: 500; white-space: nowrap; text-align: center;
+      border-right: 1px solid #e0e0e0; padding-right: 10px;
+    }
+    .booking-item .bi-room{
+      font-weight: 700; color: var(--muted); white-space: nowrap; text-align: center;
+      border-right: 1px solid #e0e0e0; padding-right: 10px;
+    }
+    .booking-item .bi-clinician{
+      flex: 1; font-weight: 600; color: #2a7a3a;
+    }
+    .booking-filler{
+      height: 10px;
+    }
+
+    @media (max-width: 986px){
+      :root{--slot-h: 28px;}
+      .slot{font-size: 11px;}
+      .calendar{border-radius: 0; border-left: none; border-right: none;}
+      .week{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .weekday-header-inner{ width: 100%; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
+
+
+    /* MODAL: iframe 오버레이 */
+    .modal-overlay{
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-container{
+      width: 560px;
+      height: 80vh;
+      max-height: 860px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+    }
+    .modal-header{
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    .modal-summary{
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .modal-close{
+      appearance: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--muted);
+      padding: 4px 6px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .modal-close:hover{ color: #111; }
+    .modal-iframe{
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+    @media (max-width: 600px){
+      .modal-container{
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        border-radius: 0;
+      }
+    }
+
+    /* ===== Day Overlay — 모바일 전용 (뷰포트 폭 < 980px) ===== */
+    .day-overlay{
+      position: fixed; inset: 0;
+      z-index: 150;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+    }
+    .day-overlay.open{
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.25s ease, visibility 0s linear 0s;
+    }
+    .day-overlay-wrapper{
+      display: flex;
+      width: 100%;
+      height: 100%;
+      justify-content: center;
+      align-items: flex-end;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.3, 1);
+    }
+    .day-overlay.open .day-overlay-wrapper{
+      transform: translateY(0);
+    }
+    .day-overlay-side{
+      flex-shrink: 0;
+      width: 48px;
+      display: flex;
+      flex-direction: column;
+    }
+    .day-overlay-side-top{
+      flex: 1;
+    }
+    .day-overlay-side-bottom{
+      height: 148px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .day-nav-btn{
+      appearance: none;
+      border: none;
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      font-size: 26px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+    .day-nav-btn:active{ background: rgba(255,255,255,0.35); }
+    .day-overlay-card{
+      flex: 1;
+      min-width: 200px;
+      max-width: 440px;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.20);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .day-overlay-header{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      font-weight: 800;
+      flex-shrink: 0;
+      background: #fff;
+    }
+    .day-overlay-title{
+      flex: 1;
+      color: #111;
+    }
+    .day-overlay-close{
+      appearance: none;
+      border: none;
+      border-top: var(--border);
+      background: var(--soft);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 14px;
+      line-height: 1;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .day-overlay-close:active{ background: #e8e8e8; }
+    .day-overlay-body{
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .day-slide-content{
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 6px 8px 16px;
+      will-change: transform;
+    }
+    /* 오버레이 내 1일 전용 레이아웃 — 기존 .week 5열 그리드 오버라이드 */
+    .day-overlay .calendar-inner{
+      min-width: 0 !important;
+    }
+    .day-overlay .week{
+      grid-template-columns: 1fr;
+      column-gap: 0;
+      background: transparent;
+      border-bottom: none;
+    }
+    .day-overlay .day{
+      border-right: none;
+      padding: 0 2px;
+      background: transparent;
+    }
+    .day-overlay .date{
+      display: none; /* 헤더에 날짜 표시되므로 숨김 */
+    }
+    .day-overlay .slot-row-header{
+      font-size: 12px;
+      padding: 6px 2px;
+    }
+    .day-overlay .slot{
+      font-size: 11px;
+    }
+    /* 뷰포트 폭 ≥ 980px (데스크탑): day-overlay 비활성화 */
+    @media (min-width: 980px){
+      .day-overlay{ display: none !important; }
+    }
+
+    /* ── 인증 모달 ── */
+    .auth-overlay{
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,.45); z-index:9000;
+      align-items:center; justify-content:center;
+    }
+    .auth-box{
+      background:#fff; border-radius:12px; padding:28px 24px;
+      width:min(320px,90vw); box-shadow:0 8px 32px rgba(0,0,0,.2);
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .auth-title{ margin:0; font-size:15px; font-weight:600; text-align:center; }
+    .auth-input{
+      border:1px solid #d0d0d0; border-radius:8px;
+      padding:9px 12px; font-size:15px; outline:none;
+    }
+    .auth-input:focus{ border-color:#555; }
+    .auth-error{ margin:0; font-size:12px; color:#c0392b; min-height:16px; text-align:center; }
+    .auth-btn{
+      background:#333; color:#fff; border:none; border-radius:8px;
+      padding:10px; font-size:14px; cursor:pointer;
+    }
+    .auth-btn:disabled{ opacity:.5; cursor:not-allowed; }
+    .auth-reset{
+      font-size:11px; color:#999; text-align:center;
+      cursor:pointer; text-decoration:underline; background:none;
+      border:none; padding:0;
+    }
+  </style>
+</head>
+<body>
+  <div class="sticky-header">
+    <div class="nav-row">
+
+      <div class="monthbar" aria-label="month navigation">
+        <button id="prev-month" type="button" aria-label="previous month">‹</button>
+        <div class="label" id="month-label">—</div>
+        <button id="next-month" type="button" aria-label="next month">›</button>
+        <div class="spacer"></div>
+      </div>
+      <div class="searchbar" id="searchbar">
+        <span class="search-icon">🔍</span>
+        <input id="search-input" type="search" placeholder="이름으로 검색…" autocomplete="off" />
+        <button class="search-clear" id="search-clear" type="button" aria-label="검색 지우기">✕</button>
+      </div>
+    </div>
+    <div class="weekday-header">
+      <div class="weekday-header-inner">
+        <div class="weekday-header-cell">월</div>
+        <div class="weekday-header-cell">화</div>
+        <div class="weekday-header-cell">수</div>
+        <div class="weekday-header-cell">목</div>
+        <div class="weekday-header-cell">금</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-badge" id="loading-badge">시트 로딩 중…</div>
+
+  <div class="wrap">
+    <div class="calendar">
+      <div class="calendar-inner">
+        <div class="weeks" id="weeks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: iframe 오버레이 마크업 -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-container" id="modal-container">
+      <div class="modal-header">
+        <span class="modal-summary" id="modal-summary"></span>
+        <button class="modal-close" id="modal-close" type="button" aria-label="닫기">✕</button>
+      </div>
+      <iframe class="modal-iframe" id="modal-iframe" src="about:blank" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- 인증 모달 -->
+  <div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
+      <p class="auth-title">접근 비밀번호를 입력하세요</p>
+      <input class="auth-input" id="auth-input" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <p class="auth-error" id="auth-error"></p>
+      <button class="auth-btn" id="auth-btn" type="button">확인</button>
+      <button class="auth-reset" id="auth-reset" type="button">저장된 비밀번호 초기화</button>
+    </div>
+  </div>
+
+  <!-- Day Overlay — 모바일 전용 slide-up 카드 (뷰포트 폭 < 980px) -->
+  <div class="day-overlay" id="day-overlay">
+    <div class="day-overlay-wrapper">
+      <div class="day-overlay-side day-overlay-side--left">
+        <div class="day-overlay-side-top"></div>
+        <div class="day-overlay-side-bottom">
+          <button class="day-nav-btn" id="day-prev-btn" type="button" aria-label="하루 전">‹</button>
+        </div>
+      </div>
+      <div class="day-overlay-card" id="day-overlay-card">
+        <div class="day-overlay-header">
+          <span class="day-overlay-title" id="day-overlay-title"></span>
+        </div>
+        <div class="day-overlay-body" id="day-overlay-body"></div>
+        <button class="day-overlay-close" id="day-overlay-close" type="button" aria-label="닫기">닫기</button>
+      </div>
+      <div class="day-overlay-side day-overlay-side--right">
+        <div class="day-overlay-side-top"></div>
+        <div class="day-overlay-side-bottom">
+          <button class="day-nav-btn" id="day-next-btn" type="button" aria-label="하루 후">›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="my-bookings" id="my-bookings">
+    <div class="my-bookings-bar">
+      <div class="my-bookings-handle" id="my-bookings-handle">
+        <span class="my-bookings-icon">▲</span>
+        <span>내 <span id="my-bookings-month"></span>예약 현황</span>
+      </div>
+      <div class="kv">
+        <input id="in-name" type="text" placeholder="이름" autocomplete="name" />
+        <div id="role-toggle" class="role-switch">
+          <div class="role-switch-thumb"></div>
+          <span class="role-switch-label" data-role="observer">관찰자</span>
+          <span class="role-switch-label" data-role="clinician">임상가</span>
+        </div>
+      </div>
+    </div>
+    <div class="my-bookings-list" id="my-bookings-list"></div>
+  </div>
+
+<script>
+  const timeBands = [
+    { key: "T1", label: "1:00 ~" },
+    { key: "T2", label: "2:00 ~" },
+    { key: "T3", label: "3:00 ~" },
+    { key: "T4", label: "4:00 ~" },
+    { key: "T5", label: "5:00 ~" },
+  ];
+  const rooms = [1,2,3,4,5,6,7,8];
+
+  const PROXY_URL = "https://script.google.com/macros/s/AKfycbzJW5XFAW9HDW56scnVn8VQhIgigiZXNvnGrQoQ0TJDfr-X2DcLzRYMwos5WF-DFmV1CA/exec";
+
+  // 인증 키 (localStorage 저장, 초기 빈 문자열)
+  const AUTH_STORAGE_KEY = "reservation_gui_auth";
+  let authKey = localStorage.getItem(AUTH_STORAGE_KEY) || "";
+
+  // config fetch 후 채워지는 모듈 변수 (페이지 소스에 노출되지 않음)
+  let _formUrl = "";
+  let _entry   = {};
+  let _timeMap = {};
+
+  // Session-level cache: "YYYY-MM" → slotMap
+  const slotCache = {};
+
+  // Slot labeling helpers (for future Sheet-driven status rendering)
+  function makeSlotId(isoDate, timeKey, roomNum){
+    // Stable unique key: YYYY-MM-DD|Tn|Rn
+    return `${isoDate}|${timeKey}|R${roomNum}`;
+  }
+
+  function findSlotEls(slotId){
+    // V5.1: 메인 캘린더와 day-overlay에 동일 slotId가 공존할 수 있으므로 NodeList 반환
+    return document.querySelectorAll(`.slot[data-slot-id="${slotId}"]`);
+  }
+
+  // 단일 비문자 기호(예: "-", "—", "·")는 임상가 미배정 플레이스홀더로 간주
+  function isPlaceholderClinician(value){
+    if(!value || typeof value !== "string") return true;
+    const t = value.trim();
+    return t.length <= 1 && /\W/.test(t);
+  }
+
+  // Apply per-slot state from proxy JSON
+  // stateMap[slotId] = { status: "inactive"|"available"|"full", ... }
+  function applySlotStateMap(stateMap){
+    if(!stateMap) return;
+    Object.entries(stateMap).forEach(([slotId, state]) => {
+      const els = findSlotEls(slotId);
+      if(!els.length) return;
+
+      // 임상가가 플레이스홀더인 경우 상태를 inactive로 강제 처리
+      const effectiveStatus = isPlaceholderClinician(state?.clinician)
+        ? "inactive"
+        : state?.status;
+
+      els.forEach(el => {
+        el.classList.remove("s-inactive","s-available","s-full","s-booked","s-blocked","s-pending","s-restricted");
+        if(effectiveStatus){
+          el.classList.add(`s-${effectiveStatus}`);
+        }
+
+        const disabled = effectiveStatus === "inactive" || effectiveStatus === "full"
+                      || effectiveStatus === "blocked" || effectiveStatus === "booked";
+        if(disabled){
+          el.dataset.disabled = "1";
+        } else {
+          delete el.dataset.disabled;
+        }
+
+        // 임상가 성함
+        const clinicianEl = el.querySelector(".slot-clinician");
+        if(clinicianEl){
+          clinicianEl.textContent = state?.clinician || "";
+          if(isPlaceholderClinician(state?.clinician)){
+            el.dataset.noClinician = "1";   // 임상가 미배정으로 처리
+          } else {
+            delete el.dataset.noClinician;
+          }
+        }
+
+        // 관찰자 성함 — 1·2번째는 .slot-observers, 3번째는 .slot-observers2
+        const observersEl = el.querySelector(".slot-observers");
+        const observers2El = el.querySelector(".slot-observers2");
+        if(observersEl){
+          const names = Array.isArray(state?.observers) ? state.observers : [];
+          observersEl.innerHTML = names.slice(0, 2).map(n => `<span>${n}</span>`).join("");
+          if(observers2El){
+            observers2El.innerHTML = names.slice(2, 3).map(n => `<span>${n}</span>`).join("");
+          }
+        }
+      });
+    });
+  }
+
+  // 날짜 차이(일 수) 계산
+  function dateDiffDays(iso1, iso2){
+    const d1 = new Date(iso1 + "T00:00:00");
+    const d2 = new Date(iso2 + "T00:00:00");
+    return Math.round((d1 - d2) / (86400000));
+  }
+
+  // 캐시된 모든 월의 슬롯 데이터에서 사용자 예약 정보를 수집
+  function collectUserBookingsFromCache(userLower){
+    const bookings = [];
+    Object.values(slotCache).forEach(stateMap => {
+      if(!stateMap) return;
+      Object.entries(stateMap).forEach(([slotId, state]) => {
+        if(!state || !state.observers || !Array.isArray(state.observers)) return;
+        const observers = state.observers.map(n => n.trim().toLowerCase());
+        if(!observers.includes(userLower)) return;
+
+        if(isPlaceholderClinician(state.clinician)) return;
+
+        // slotId 형식: "YYYY-MM-DD|Tn|Rn"
+        const parts = slotId.split("|");
+        if(parts.length < 3) return;
+        const date = parts[0];
+        const timeKey = parts[1];
+        const roomKey = parts[2];
+
+        const tb = timeBands.find(t => t.key === timeKey);
+        const timeLabel = tb ? tb.label : timeKey;
+        const roomNum = roomKey.replace("R","");
+        const d = new Date(date + "T00:00:00");
+
+        bookings.push({
+          date: date,
+          clinician: state.clinician.trim().toLowerCase(),
+          slotId: slotId,
+          dateLabel: formatMD(d),
+          timeLabel: timeLabel,
+          roomLabel: roomNum + "번방",
+          clinicianLabel: state.clinician.trim(),
+        });
+      });
+    });
+    return bookings;
+  }
+
+  // 2주 제한: 같은 임상가에 대해 14일 이내 재예약 불가
+  function applyRestriction(){
+    // 이전 제한 상태 제거
+    document.querySelectorAll(".slot.s-restricted").forEach(el => {
+      el.classList.remove("s-restricted");
+      delete el.dataset.restrictionReasons;
+      // 원래 상태 복원 (s-available 이었던 슬롯)
+      if(el.dataset.originalState){
+        el.classList.add(el.dataset.originalState);
+        delete el.dataset.originalState;
+      }
+      if(!el.classList.contains("s-inactive") && !el.classList.contains("s-full")
+        && !el.classList.contains("s-booked") && !el.classList.contains("s-blocked")){
+        delete el.dataset.disabled;
+      }
+    });
+
+    const userName = inName.value.trim();
+    if(!userName) return;
+    // 2주 제한은 관찰자 모드에서만 적용
+    if(userRole !== "observer") return;
+    const userLower = userName.toLowerCase();
+
+    // 1) 캐시된 모든 월의 데이터에서 사용자 예약 수집 (DOM 한정 X → 크로스 월 지원)
+    const userBookings = collectUserBookingsFromCache(userLower);
+
+    if(userBookings.length === 0) return;
+
+    // 임상가별 예약 횟수 집계 (최대 3회 제한용)
+    const clinicianCount = {};
+    for(const b of userBookings){
+      clinicianCount[b.clinician] = (clinicianCount[b.clinician] || 0) + 1;
+    }
+
+    // 2) 모든 슬롯 순회 — 제한 조건 확인
+    document.querySelectorAll(".slot").forEach(el => {
+      // 이미 비활성·만석인 슬롯은 건너뜀
+      if(el.classList.contains("s-inactive") || el.classList.contains("s-full")) return;
+
+      // 사용자가 이미 등록된 슬롯은 건너뜀
+      const observers = Array.from(
+        el.querySelectorAll(".slot-observers span, .slot-observers2 span")
+      ).map(s => s.textContent.trim().toLowerCase());
+      if(observers.includes(userLower)) return;
+
+      const clinicianText = el.querySelector(".slot-clinician")?.textContent || "";
+      if(isPlaceholderClinician(clinicianText)) return;
+      const clinicianLower = clinicianText.trim().toLowerCase();
+
+      const slotDate = el.dataset.date;
+
+      const reasons = [];
+
+      // 규정 1: 동일 임상가 최대 3회 제한
+      if((clinicianCount[clinicianLower] || 0) >= 3){
+        const matchedBookings = userBookings
+          .filter(b => b.clinician === clinicianLower)
+          .map(b => ({ date: b.dateLabel, time: b.timeLabel, room: b.roomLabel, clinician: b.clinicianLabel }));
+        reasons.push({ type: "max3", bookings: matchedBookings });
+      }
+
+      // 규정 2: 2주(14일) 이내 동일 임상가 재관찰 금지
+      const twoWeekConflicts = [];
+      for(const booking of userBookings){
+        if(booking.clinician !== clinicianLower) continue;
+        const diff = Math.abs(dateDiffDays(slotDate, booking.date));
+        if(diff > 0 && diff < 14){
+          twoWeekConflicts.push({ date: booking.dateLabel, time: booking.timeLabel, room: booking.roomLabel, clinician: booking.clinicianLabel });
+        }
+      }
+      if(twoWeekConflicts.length > 0){
+        reasons.push({ type: "twoWeek", bookings: twoWeekConflicts });
+      }
+
+      if(reasons.length > 0){
+        // 원래 상태 저장 후 제한 적용
+        const cur = el.classList.contains("s-available") ? "s-available" : "";
+        if(cur) el.dataset.originalState = cur;
+        el.classList.remove("s-available");
+        el.classList.add("s-restricted");
+        el.dataset.disabled = "1";
+        el.dataset.restrictionReasons = JSON.stringify(reasons);
+      }
+    });
+  }
+
+  // 제한 사유 팝업
+  function showRestrictionPopup(slotEl){
+    // 기존 팝업 제거
+    document.querySelector(".restriction-popup-overlay")?.remove();
+
+    let reasons;
+    try { reasons = JSON.parse(slotEl.dataset.restrictionReasons); } catch(e){ return; }
+    if(!reasons || reasons.length === 0) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "restriction-popup-overlay";
+
+    const popup = document.createElement("div");
+    popup.className = "restriction-popup";
+
+    const clinicianText = slotEl.querySelector(".slot-clinician")?.textContent?.trim() || "";
+    const slotLabel = `${formatMD(new Date(slotEl.dataset.date + "T00:00:00"))} ${slotEl.dataset.timeLabel} ${slotEl.dataset.room}번방`;
+
+    let html = `<div class="restriction-popup-title">예약 제한 안내</div>`;
+    html += `<div class="restriction-popup-slot">${slotLabel} · ${clinicianText}</div>`;
+
+    function buildBookingTable(bookings){
+      let t = `<table class="restriction-popup-table"><thead><tr><th>일자</th><th>시간</th><th>방</th><th>임상가</th></tr></thead><tbody>`;
+      for(const b of bookings){
+        t += `<tr><td>${b.date}</td><td>${b.time}</td><td>${b.room}</td><td>${b.clinician}</td></tr>`;
+      }
+      t += `</tbody></table>`;
+      return t;
+    }
+
+    for(const r of reasons){
+      if(r.type === "twoWeek"){
+        html += `<div class="restriction-popup-section">`;
+        html += `<div class="restriction-popup-reason">2주 이내 동일 임상가 재관찰 제한</div>`;
+        html += buildBookingTable(r.bookings);
+        html += `</div>`;
+      }
+      if(r.type === "max3"){
+        html += `<div class="restriction-popup-section">`;
+        html += `<div class="restriction-popup-reason">동일 임상가 최대 3회 예약 제한</div>`;
+        html += buildBookingTable(r.bookings);
+        html += `</div>`;
+      }
+    }
+
+    html += `<button class="restriction-popup-close">확인</button>`;
+    popup.innerHTML = html;
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (e) => {
+      if(e.target === overlay || e.target.classList.contains("restriction-popup-close")){
+        overlay.remove();
+      }
+    });
+  }
+
+  // 사용자 역할 토글 (관찰자 / 임상가)
+  let userRole = "observer"; // "observer" | "clinician"
+  const roleToggle = document.getElementById("role-toggle");
+  roleToggle.addEventListener("click", () => {
+    if(userRole === "observer"){
+      userRole = "clinician";
+      roleToggle.classList.add("is-clinician");
+      calendarEl.classList.add("mode-clinician");
+    } else {
+      userRole = "observer";
+      roleToggle.classList.remove("is-clinician");
+      calendarEl.classList.remove("mode-clinician");
+    }
+    applyRestriction();
+    applyUserDots();
+    applyAvailDots();
+    updateMyBookings();
+  });
+
+  // 사용자 예약 표시 dot — 토글 상태에 따라 관찰자 또는 임상가 매칭 시 초록색 원 표시
+  // 관찰자 모드에서 매칭된 슬롯에는 s-user-match(노란색) 추가
+  function applyUserDots(){
+    document.querySelectorAll(".slot-row-header.has-user").forEach(h => h.classList.remove("has-user"));
+    document.querySelectorAll(".slot.s-user-match").forEach(el => el.classList.remove("s-user-match"));
+
+    const userName = inName.value.trim();
+    if(!userName) return;
+    const userLower = userName.toLowerCase();
+
+    document.querySelectorAll(".slot").forEach(el => {
+      let matched = false;
+      if(userRole === "observer"){
+        const observers = Array.from(
+          el.querySelectorAll(".slot-observers span, .slot-observers2 span")
+        ).map(s => s.textContent.trim().toLowerCase());
+        matched = observers.includes(userLower);
+      } else {
+        const clinician = (el.querySelector(".slot-clinician")?.textContent || "").trim().toLowerCase();
+        matched = clinician === userLower;
+      }
+      if(matched){
+        const header = el.closest(".slot-row")?.querySelector(".slot-row-header");
+        if(header) header.classList.add("has-user");
+        if(userRole === "observer") el.classList.add("s-user-match");
+      }
+    });
+  }
+
+  function applyAvailDots(){
+    document.querySelectorAll(".slot-row-header.has-avail").forEach(h => h.classList.remove("has-avail"));
+    document.querySelectorAll(".slot-row").forEach(row => {
+      if(row.querySelector(".slot.s-available")){
+        const header = row.querySelector(".slot-row-header");
+        if(header) header.classList.add("has-avail");
+      }
+    });
+  }
+
+  // 내 예약 현황 패널
+  const myBookingsEl = document.getElementById("my-bookings");
+  const myBookingsHandle = document.getElementById("my-bookings-handle");
+  const myBookingsList = document.getElementById("my-bookings-list");
+
+  myBookingsHandle.addEventListener("click", () => {
+    myBookingsEl.classList.toggle("open");
+  });
+
+  function updateMyBookings(){
+    myBookingsList.innerHTML = "";
+    const userName = inName.value.trim();
+    if(!userName){ return; }
+    const userLower = userName.toLowerCase();
+
+    const bookings = [];
+    document.querySelectorAll(".slot").forEach(el => {
+      let matched = false;
+      if(userRole === "observer"){
+        const observers = Array.from(
+          el.querySelectorAll(".slot-observers span, .slot-observers2 span")
+        ).map(s => s.textContent.trim().toLowerCase());
+        matched = observers.includes(userLower);
+      } else {
+        const clinician = (el.querySelector(".slot-clinician")?.textContent || "").trim().toLowerCase();
+        matched = clinician === userLower;
+      }
+      if(!matched) return;
+
+      const isoDate = el.dataset.date;
+      const d = new Date(isoDate + "T00:00:00");
+      const dateStr = formatMD(d);
+      const clinician = el.querySelector(".slot-clinician")?.textContent || "";
+      const observers = Array.from(
+        el.querySelectorAll(".slot-observers span, .slot-observers2 span")
+      ).map(s => s.textContent.trim()).filter(Boolean);
+      const room = el.dataset.room;
+      const timeLabel = el.dataset.timeLabel;
+      bookings.push({ isoDate, dateStr, clinician, observers, room, timeLabel });
+    });
+
+    // 날짜순 정렬
+    bookings.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
+
+    bookings.forEach(b => {
+      const item = document.createElement("div");
+      item.className = "booking-item";
+      const biClinician = userRole === "clinician"
+        ? (b.observers.slice(0, 3).join(", ") || "—")
+        : b.clinician;
+      item.innerHTML = `<span class="bi-date">${b.dateStr}</span>`
+        + `<span class="bi-time">${b.timeLabel}</span>`
+        + `<span class="bi-room">${b.room}번방</span>`
+        + `<span class="bi-clinician">${biClinician}</span>`;
+      myBookingsList.appendChild(item);
+    });
+
+    // 하단 여백 필러 row
+    const filler = document.createElement("div");
+    filler.className = "booking-filler";
+    myBookingsList.appendChild(filler);
+  }
+
+  const loadingBadge = document.getElementById("loading-badge");
+  const calendarEl = document.querySelector(".calendar");
+
+  // 단일 월 데이터를 fetch하여 캐시에 저장 (UI 반영 없이 캐시만)
+  async function fetchMonthToCache(year, monthIndex){
+    const cacheKey = `${year}-${pad2(monthIndex + 1)}`;
+    if(slotCache[cacheKey]) return;
+
+    const start = `${year}-${pad2(monthIndex + 1)}-01`;
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const end = `${year}-${pad2(monthIndex + 1)}-${pad2(lastDay)}`;
+
+    try {
+      const res = await fetch(`${PROXY_URL}?start=${start}&end=${end}&k=${encodeURIComponent(authKey)}`);
+      const json = await res.json();
+      if(json.code === "AUTH"){ handleAuthFailure(); return; }
+      if(!json.error && json.slots){
+        slotCache[cacheKey] = json.slots;
+      }
+    } catch(err) {
+      console.warn("Adjacent month fetch failed:", err);
+    }
+  }
+
+  // 인접 월 (이전·다음) 계산
+  function getAdjacentMonths(year, monthIndex){
+    const result = [];
+    // 이전 월
+    if(monthIndex === 0) result.push({ year: year - 1, month: 11 });
+    else result.push({ year, month: monthIndex - 1 });
+    // 다음 월
+    if(monthIndex === 11) result.push({ year: year + 1, month: 0 });
+    else result.push({ year, month: monthIndex + 1 });
+    return result;
+  }
+
+  async function loadSlotStates(year, monthIndex){
+    const cacheKey = `${year}-${pad2(monthIndex + 1)}`;
+    const hasCurrent = !!slotCache[cacheKey];
+
+    if(hasCurrent){
+      applySlotStateMap(slotCache[cacheKey]);
+      // 인접 월 캐시가 있으면 바로 제한 적용, 없으면 백그라운드 fetch 후 재적용
+      const adj = getAdjacentMonths(year, monthIndex);
+      const needFetch = adj.filter(a => !slotCache[`${a.year}-${pad2(a.month + 1)}`]);
+      if(needFetch.length === 0){
+        applyRestriction();
+        applyUserDots();
+        applyAvailDots();
+        updateMyBookings();
+        runSearch(searchInput.value);
+      } else {
+        // 우선 현재 캐시 기준으로 적용
+        applyRestriction();
+        applyUserDots();
+        applyAvailDots();
+        updateMyBookings();
+        runSearch(searchInput.value);
+        // 인접 월 fetch 후 제한 재적용
+        await Promise.all(needFetch.map(a => fetchMonthToCache(a.year, a.month)));
+        applyRestriction();
+        applyUserDots();
+        applyAvailDots();
+        updateMyBookings();
+        runSearch(searchInput.value);
+      }
+      return;
+    }
+
+    // Show loading state
+    loadingBadge.classList.add("visible");
+    document.body.classList.add("is-loading");
+    calendarEl.classList.add("is-loading");
+
+    // 이전·현재·다음 월을 단일 범위 요청으로 한 번에 fetch
+    const adj = getAdjacentMonths(year, monthIndex);
+    const prevM = adj[0];
+    const nextM = adj[1];
+    const rangeStart = `${prevM.year}-${pad2(prevM.month + 1)}-01`;
+    const nextLastDay = new Date(nextM.year, nextM.month + 1, 0).getDate();
+    const rangeEnd   = `${nextM.year}-${pad2(nextM.month + 1)}-${pad2(nextLastDay)}`;
+
+    try {
+      const res  = await fetch(`${PROXY_URL}?start=${rangeStart}&end=${rangeEnd}&k=${encodeURIComponent(authKey)}`);
+      const json = await res.json();
+      if(json.code === "AUTH"){ handleAuthFailure(); return; }
+      if(!json.error && json.slots){
+        // 슬롯 키 앞 7자("YYYY-MM") 기준으로 월별 분리 캐싱
+        const buckets = {};
+        Object.entries(json.slots).forEach(([slotId, state]) => {
+          const mk = slotId.slice(0, 7);
+          if(!buckets[mk]) buckets[mk] = {};
+          buckets[mk][slotId] = state;
+        });
+        Object.entries(buckets).forEach(([mk, slots]) => {
+          slotCache[mk] = slots;
+        });
+      }
+    } catch(err) {
+      console.warn("Proxy fetch failed:", err);
+    }
+
+    if(slotCache[cacheKey]){
+      applySlotStateMap(slotCache[cacheKey]);
+      applyRestriction();
+      applyUserDots();
+      applyAvailDots();
+      updateMyBookings();
+      runSearch(searchInput.value);
+    }
+
+    loadingBadge.classList.remove("visible");
+    document.body.classList.remove("is-loading");
+    calendarEl.classList.remove("is-loading");
+  }
+
+  function roomLabel(n){
+    return `${n}번방`;
+  }
+
+  function buildPrefillUrl({ name, isoDate, timeBandLabel, roomNum }){
+    const d = new Date(isoDate + "T00:00:00");
+    const year  = String(d.getFullYear());
+    const month = String(d.getMonth() + 1);
+    const day   = String(d.getDate());
+
+    const timeValue = _timeMap[timeBandLabel] ?? timeBandLabel;
+    const roomValue = roomLabel(roomNum);
+
+    const params = new URLSearchParams();
+    params.set("usp", "pp_url");
+
+    if(name && name.trim().length > 0){
+      params.set(_entry.name, name.trim());
+    }
+
+    params.set(_entry.year,  year);
+    params.set(_entry.month, month);
+    params.set(_entry.day,   day);
+    params.set(_entry.time,  timeValue);
+    params.set(_entry.room,  roomValue);
+
+    return `${_formUrl}?${params.toString()}`;
+  }
+
+  const inName = document.getElementById("in-name");
+  // Optional: persist name locally on this device
+  const NAME_STORAGE_KEY = "reservation_gui_name";
+  inName.value = localStorage.getItem(NAME_STORAGE_KEY) ?? "";
+  inName.addEventListener("input", () => {
+    localStorage.setItem(NAME_STORAGE_KEY, inName.value);
+    applyRestriction();
+    applyUserDots();
+    applyAvailDots();
+    updateMyBookings();
+  });
+
+  const weeksEl = document.getElementById("weeks");
+  const prevBtn = document.getElementById("prev-month");
+  const nextBtn = document.getElementById("next-month");
+  const monthLabel = document.getElementById("month-label");
+
+// 시간대 개별 토글
+  // [데스크탑 ≥ 980px] 메인 캘린더 inline 시간대 토글
+  // 순서: (새로 펼칠 때)  모든 주 닫기 → 즉시 열기
+  //       (같은 주 전환) 기존 slot 닫기 + 새 slot 즉시 열기 (동시)
+  //       (접을 때)      slot 접힘 + calendar-inner 즉시 축소
+  function toggleTimeBand(key, weekEl){
+    const calendarInner = document.querySelector(".calendar-inner");
+    const willOpen = !weekEl.classList.contains(`tb-open-${key}`);
+    const wasExpanded = calendarInner.classList.contains("expanded");
+
+    // ─── 모든 주의 열린 밴드 닫기 ───
+    document.querySelectorAll(".week").forEach(w => {
+      timeBands.forEach(tb => {
+        w.classList.remove(`tb-open-${tb.key}`);
+        w.querySelectorAll(`.slot-row[data-time-key="${tb.key}"] .al-icon`).forEach(el => {
+          el.textContent = "▶";
+        });
+      });
+    });
+
+    if(willOpen){
+      myBookingsEl.classList.remove("open");
+      calendarInner.classList.add("expanded");
+
+      const doOpen = () => {
+        weekEl.classList.add(`tb-open-${key}`);
+        weekEl.querySelectorAll(`.slot-row[data-time-key="${key}"] .al-icon`).forEach(el => {
+          el.textContent = "▼";
+        });
+        setTimeout(() => {
+          const dateEl = weekEl.querySelector(".date");
+          const stickyHeader = document.querySelector(".sticky-header");
+          if(dateEl && stickyHeader){
+            const offset = dateEl.getBoundingClientRect().top - stickyHeader.getBoundingClientRect().bottom;
+            window.scrollBy({ top: offset, behavior: "smooth" });
+          }
+        }, 300);
+      };
+
+      doOpen();
+
+    } else {
+      calendarInner.classList.remove("expanded");
+    }
+  }
+
+  // 검색 바
+  const searchbar   = document.getElementById("searchbar");
+  const searchInput = document.getElementById("search-input");
+  const searchClear = document.getElementById("search-clear");
+  let searchDebounce = null;
+
+  function runSearch(query){
+    // 이전 검색 상태 초기화
+    document.querySelectorAll(".slot.s-search-match").forEach(el => el.classList.remove("s-search-match"));
+    document.querySelectorAll(".slot-row-header.has-match").forEach(el => el.classList.remove("has-match"));
+
+    const q = query.trim().toLowerCase();
+    if(!q) return;
+
+    document.querySelectorAll(".slot").forEach(el => {
+      const clinician = (el.querySelector(".slot-clinician")?.textContent || "").toLowerCase();
+      const observers = Array.from(
+        el.querySelectorAll(".slot-observers span, .slot-observers2 span")
+      ).map(s => s.textContent.toLowerCase()).join(" ");
+
+      if(clinician.includes(q) || observers.includes(q)){
+        el.classList.add("s-search-match");
+        const header = el.closest(".slot-row")?.querySelector(".slot-row-header");
+        if(header) header.classList.add("has-match");
+      }
+    });
+  }
+
+  searchInput.addEventListener("input", () => {
+    const hasVal = searchInput.value.length > 0;
+    searchbar.classList.toggle("has-value", hasVal);
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => runSearch(searchInput.value), 1000);
+  });
+
+  searchClear.addEventListener("click", () => {
+    searchInput.value = "";
+    searchbar.classList.remove("has-value");
+    searchInput.focus();
+    clearTimeout(searchDebounce);
+    runSearch("");
+  });
+
+  function pad2(n){
+    return String(n).padStart(2, "0");
+  }
+
+  function toISODate(d){
+    // d: Date
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  const DOW_KO = ['일','월','화','수','목','금','토'];
+  function formatMD(d){
+    return `${d.getMonth()+1}/${d.getDate()} (${DOW_KO[d.getDay()]})`;
+  }
+
+  function formatMonthLabel(year, monthIndex){
+    // monthIndex: 0-11
+    return `${year}.${pad2(monthIndex+1)}`;
+  }
+
+  function toMMDDYYYY(isoDate){
+    const [y,m,d] = isoDate.split("-").map(s => s.trim());
+    return `${m}/${d}/${y}`;
+  }
+
+  function clearSelected(){
+    document.querySelectorAll(".slot.selected").forEach(el => el.classList.remove("selected"));
+  }
+
+  function resetOutputs(){}
+
+  function cloneDate(d){
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDays(d, n){
+    const x = cloneDate(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+  function mondayOfWeek(d){
+    // JS: 0=Sun..6=Sat -> convert to Monday-based
+    const day = d.getDay();
+    const diff = (day === 0) ? -6 : (1 - day); // Sunday -> go back 6 days
+    return addDays(d, diff);
+  }
+
+  function fridayOfWeek(d){
+    return addDays(mondayOfWeek(d), 4);
+  }
+
+  function buildMicroGrid(micro){
+    const date = micro.dataset.date;
+
+    const slots = document.createElement("div");
+    slots.className = "slots";
+
+    timeBands.forEach(tb => {
+      const row = document.createElement("div");
+      row.className = "slot-row";
+      row.dataset.timeKey = tb.key;
+
+      // 헤더: 항상 보임 — 시간대 레이블 + 토글 아이콘
+      const header = document.createElement("div");
+      header.className = "slot-row-header";
+      const icon = document.createElement("span");
+      icon.className = "al-icon";
+      icon.textContent = "▶";
+      const lbl = document.createElement("span");
+      lbl.className = "slot-row-label";
+      lbl.textContent = tb.label.replace(" ~", "");
+      const dots = document.createElement("span");
+      dots.className = "header-dots";
+      const userDot = document.createElement("span");
+      userDot.className = "user-dot";
+      dots.appendChild(userDot);
+      const availDot = document.createElement("span");
+      availDot.className = "avail-dot";
+      dots.appendChild(availDot);
+      header.appendChild(icon);
+      header.appendChild(lbl);
+      header.appendChild(dots);
+      header.addEventListener("click", () => {
+        const weekEl = row.closest(".week");
+        // [모바일 < 980px] day-overlay 내부 클릭 → 오버레이 전용 시간대 토글
+        if(weekEl.closest(".day-overlay")){
+          toggleOverlayTimeBand(tb.key, weekEl);
+          return;
+        }
+        // [모바일 < 980px] 메인 캘린더 클릭 → day-overlay 열기
+        if(window.innerWidth < 980){
+          openDayOverlay(date, tb.key);
+          return;
+        }
+        // [데스크탑 ≥ 980px] 메인 캘린더 inline 펼침
+        toggleTimeBand(tb.key, weekEl);
+      });
+      row.appendChild(header);
+
+      // 바디: 8개 방 버튼 — 접힘 시 숨김
+      const body = document.createElement("div");
+      body.className = "slot-row-body";
+      rooms.forEach(roomNum => {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        const roomEl = document.createElement("div");
+        roomEl.className = "slot-room";
+        roomEl.textContent = String(roomNum);
+        const clinicianEl = document.createElement("div");
+        clinicianEl.className = "slot-clinician";
+        const observersEl = document.createElement("div");
+        observersEl.className = "slot-observers";
+        const observers2El = document.createElement("div");
+        observers2El.className = "slot-observers2";
+        slot.appendChild(roomEl);
+        slot.appendChild(clinicianEl);
+        slot.appendChild(observersEl);
+        slot.appendChild(observers2El);
+        slot.title = `${date} ${tb.label} Room ${roomNum}`;
+        slot.dataset.date = date;
+        slot.dataset.timeKey = tb.key;
+        slot.dataset.timeLabel = tb.label;
+        slot.dataset.room = String(roomNum);
+        slot.dataset.roomKey = `R${roomNum}`;
+        slot.dataset.slotId = makeSlotId(date, tb.key, roomNum);
+
+        slot.addEventListener("click", () => {
+          if(userRole === "clinician") return;
+          if(slot.classList.contains("s-restricted") && slot.dataset.restrictionReasons){
+            showRestrictionPopup(slot);
+            return;
+          }
+          if(slot.dataset.disabled === "1") return;
+          clearSelected();
+          slot.classList.add("selected");
+          const url = buildPrefillUrl({
+            name: inName.value,
+            isoDate: date,
+            timeBandLabel: slot.dataset.timeLabel,
+            roomNum: roomNum,
+          });
+          /* MODAL: 새 탭 대신 iframe 모달로 열기 */
+          const summaryText = `${formatMD(new Date(date + "T00:00:00"))} · ${slot.dataset.timeLabel} · ${roomNum}번방`;
+          openModal(url, summaryText);
+        });
+
+        body.appendChild(slot);
+      });
+      row.appendChild(body);
+      slots.appendChild(row);
+    });
+
+    micro.appendChild(slots);
+  }
+
+  function renderMonth(year, monthIndex){
+    // monthIndex: 0-11
+    monthLabel.textContent = formatMonthLabel(year, monthIndex);
+    const myBookingsMonthEl = document.getElementById("my-bookings-month");
+    if(myBookingsMonthEl) myBookingsMonthEl.textContent = `${monthIndex + 1}월 `;
+    weeksEl.innerHTML = "";
+    resetOutputs();
+
+    const firstOfMonth = new Date(year, monthIndex, 1);
+    const lastOfMonth = new Date(year, monthIndex + 1, 0);
+
+    // Show from Monday of the week containing the 1st
+    const start = mondayOfWeek(firstOfMonth);
+    // to Friday of the week containing the last day
+    const end = fridayOfWeek(lastOfMonth);
+
+    // Up to 6 weeks naturally falls out of this range
+    for(let weekStart = cloneDate(start); weekStart <= end; weekStart = addDays(weekStart, 7)){
+      // If this Mon–Fri row has no days in the target month (happens when the 1st is Sat/Sun), skip the row.
+      let hasInMonth = false;
+      for(let i=0; i<5; i++){
+        const d = addDays(weekStart, i);
+        if(d.getMonth() === monthIndex){
+          hasInMonth = true;
+          break;
+        }
+      }
+      if(!hasInMonth) continue;
+
+      const week = document.createElement("div");
+      week.className = "week";
+
+      // Mon-Fri only
+      for(let i=0; i<5; i++){
+        const d = addDays(weekStart, i);
+        const inMonth = (d.getMonth() === monthIndex);
+
+        const day = document.createElement("div");
+        day.className = inMonth ? "day" : "day out";
+
+        const dateEl = document.createElement("div");
+        dateEl.className = "date";
+        dateEl.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+        day.appendChild(dateEl);
+
+        if(inMonth){
+          const micro = document.createElement("div");
+          micro.className = "micro";
+          micro.dataset.date = toISODate(d);
+          day.appendChild(micro);
+        }
+
+        week.appendChild(day);
+      }
+
+      weeksEl.appendChild(week);
+    }
+
+    // Build slot grids for all in-month micros
+    document.querySelectorAll(".micro").forEach(buildMicroGrid);
+
+    // Fetch slot states from proxy
+    loadSlotStates(year, monthIndex);
+  }
+
+  // initial month = today
+  const today = new Date();
+  let currentYear = today.getFullYear();
+  let currentMonth = today.getMonth();
+
+  prevBtn.addEventListener("click", () => {
+    currentMonth -= 1;
+    if(currentMonth < 0){
+      currentMonth = 11;
+      currentYear -= 1;
+    }
+    renderMonth(currentYear, currentMonth);
+  });
+
+  nextBtn.addEventListener("click", () => {
+    currentMonth += 1;
+    if(currentMonth > 11){
+      currentMonth = 0;
+      currentYear += 1;
+    }
+    renderMonth(currentYear, currentMonth);
+  });
+
+  // 인증 모달 DOM — initApp() 호출 전에 반드시 선언되어야 함
+  const authOverlay = document.getElementById("auth-overlay");
+  const authInput   = document.getElementById("auth-input");
+  const authError   = document.getElementById("auth-error");
+  const authBtn     = document.getElementById("auth-btn");
+  const authReset   = document.getElementById("auth-reset");
+
+  initApp();
+
+  /* MODAL: 초기화 */
+  const modalOverlay   = document.getElementById("modal-overlay");
+  const modalSummary   = document.getElementById("modal-summary");
+  const modalClose     = document.getElementById("modal-close");
+  const modalIframe    = document.getElementById("modal-iframe");
+
+  function openModal(url, summaryText){
+    modalSummary.textContent = summaryText;
+    modalIframe.src = url + "&embedded=true";
+    modalOverlay.style.display = "flex";
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(){
+    modalOverlay.style.display = "none";
+    modalIframe.src = "about:blank";
+    // V5.1: day-overlay가 아직 열려있다면 body 스크롤 잠금 유지
+    const dayOverlayStillOpen = document.getElementById("day-overlay")?.classList.contains("open");
+    if(!dayOverlayStillOpen){
+      document.body.style.overflow = "";
+    }
+  }
+
+  /* MODAL: 닫기 트리거 — ✕ 버튼 / 오버레이 바깥 클릭 / Escape 키 */
+  modalClose.addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", (e) => {
+    if(e.target === modalOverlay) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && modalOverlay.style.display !== "none") closeModal();
+  });
+
+  /* ===== Day Overlay — 모바일 전용 (뷰포트 폭 < 980px) slide-up 카드 ===== */
+  const dayOverlayEl    = document.getElementById("day-overlay");
+  const dayOverlayCard  = document.getElementById("day-overlay-card");
+  const dayOverlayTitle = document.getElementById("day-overlay-title");
+  const dayOverlayBody  = document.getElementById("day-overlay-body");
+  const dayOverlayClose = document.getElementById("day-overlay-close");
+  const dayPrevBtn      = document.getElementById("day-prev-btn");
+  const dayNextBtn      = document.getElementById("day-next-btn");
+  let   overlayCurrentDate    = null;  // 현재 열린 날짜 (ISO string)
+  let   overlayCurrentContent = null;  // 현재 표시 중인 .day-slide-content 요소
+  let   overlayIsAnimating    = false; // 슬라이드 애니메이션 진행 중 플래그
+  let   overlayBodyObserver   = null;  // ResizeObserver — body 높이 동기화
+
+  // [모바일 < 980px] day-overlay 내부 전용 시간대 토글 — calendar-inner.expanded / 스크롤 로직 제외
+  function toggleOverlayTimeBand(key, weekEl){
+    const willOpen = !weekEl.classList.contains(`tb-open-${key}`);
+    // 현 주(오버레이의 week)의 모든 시간대 접기
+    timeBands.forEach(tb => {
+      weekEl.classList.remove(`tb-open-${tb.key}`);
+      weekEl.querySelectorAll(`.slot-row[data-time-key="${tb.key}"] .al-icon`).forEach(el => {
+        el.textContent = "▶";
+      });
+    });
+    if(willOpen){
+      weekEl.classList.add(`tb-open-${key}`);
+      weekEl.querySelectorAll(`.slot-row[data-time-key="${key}"] .al-icon`).forEach(el => {
+        el.textContent = "▼";
+      });
+    }
+  }
+
+  // ── body 높이를 현재 콘텐츠에 맞춰 동적으로 동기화 ──
+  function syncBodyHeight(contentEl){
+    if(overlayBodyObserver) overlayBodyObserver.disconnect();
+    // 즉시 동기화 (레이아웃 강제 계산)
+    dayOverlayBody.style.height = contentEl.offsetHeight + "px";
+    overlayBodyObserver = new ResizeObserver(() => {
+      if(contentEl.isConnected){
+        dayOverlayBody.style.height = contentEl.offsetHeight + "px";
+      }
+    });
+    overlayBodyObserver.observe(contentEl);
+  }
+
+  // ── 슬라이드 콘텐츠 생성 (DOM 삽입·상태 적용은 호출자가 담당) ──
+  function buildSlideContent(isoDate, initialTimeKey){
+    const contentEl = document.createElement("div");
+    contentEl.className = "day-slide-content";
+
+    const inner = document.createElement("div");
+    inner.className = "calendar-inner";
+    const week = document.createElement("div");
+    week.className = "week";
+    const day = document.createElement("div");
+    day.className = "day";
+    const dateEl = document.createElement("div");
+    dateEl.className = "date";
+    day.appendChild(dateEl);
+    const micro = document.createElement("div");
+    micro.className = "micro";
+    micro.dataset.date = isoDate;
+    day.appendChild(micro);
+    week.appendChild(day);
+    inner.appendChild(week);
+    contentEl.appendChild(inner);
+
+    return { contentEl, weekEl: week, microEl: micro };
+  }
+
+  // ── 슬라이드 콘텐츠에 슬롯 상태·시간대 펼침 적용 ──
+  function applySlideState(isoDate, weekEl, microEl, initialTimeKey){
+    buildMicroGrid(microEl);
+    if(initialTimeKey){
+      weekEl.classList.add(`tb-open-${initialTimeKey}`);
+      weekEl.querySelectorAll(`.slot-row[data-time-key="${initialTimeKey}"] .al-icon`).forEach(el => {
+        el.textContent = "▼";
+      });
+    }
+    const mk = isoDate.slice(0, 7);
+    if(slotCache[mk]) applySlotStateMap(slotCache[mk]);
+    applyRestriction();
+    applyUserDots();
+    applyAvailDots();
+    runSearch(searchInput.value);
+  }
+
+  // ── 주말 건너뛰어 인접 날짜 반환 ──
+  function getAdjacentDate(isoDate, direction){
+    const delta = direction === "next" ? 1 : -1;
+    const d = new Date(isoDate + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    while(d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + delta);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
+  // ── 슬라이드 애니메이션 실행 (newContentEl은 이미 DOM에 삽입되어 있어야 함) ──
+  function runSlideAnimation(newContentEl, direction, onComplete){
+    const EASING = "transform 0.3s cubic-bezier(0.25, 0.8, 0.3, 1)";
+    const exitTo = direction === "next" ? "-100%" : "100%";
+    const old = overlayCurrentContent;
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if(old){ old.style.transition = EASING; old.style.transform = `translateX(${exitTo})`; }
+      newContentEl.style.transition = EASING;
+      newContentEl.style.transform  = "translateX(0)";
+      newContentEl.addEventListener("transitionend", () => {
+        if(old) old.remove();
+        overlayCurrentContent = newContentEl;
+        overlayIsAnimating = false;
+        if(onComplete) onComplete();
+      }, { once: true });
+    }));
+  }
+
+  function openDayOverlay(isoDate, initialTimeKey, direction){
+    overlayCurrentDate = isoDate;
+    const d = new Date(isoDate + "T00:00:00");
+    dayOverlayTitle.textContent = formatMD(d);
+
+    const { contentEl, weekEl, microEl } = buildSlideContent(isoDate, initialTimeKey);
+
+    if(direction && overlayCurrentContent){
+      // 슬라이드 애니메이션으로 전환 — 먼저 off-screen으로 삽입한 후 상태 적용
+      overlayIsAnimating = true;
+      const enterFrom = direction === "next" ? "100%" : "-100%";
+      contentEl.style.transition = "none";
+      contentEl.style.transform  = `translateX(${enterFrom})`;
+      dayOverlayBody.appendChild(contentEl);
+      applySlideState(isoDate, weekEl, microEl, initialTimeKey);
+      syncBodyHeight(contentEl);
+      runSlideAnimation(contentEl, direction, null);
+    } else {
+      // 초기 진입 — 애니메이션 없이 바로 삽입
+      dayOverlayBody.innerHTML = "";
+      overlayCurrentContent = null;
+      dayOverlayBody.appendChild(contentEl);
+      applySlideState(isoDate, weekEl, microEl, initialTimeKey);
+      overlayCurrentContent = contentEl;
+      syncBodyHeight(contentEl);
+    }
+
+    myBookingsEl.classList.remove("open");
+    dayOverlayEl.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeDayOverlay(){
+    dayOverlayEl.classList.remove("open");
+    if(modalOverlay.style.display === "none" || !modalOverlay.style.display){
+      document.body.style.overflow = "";
+    }
+    setTimeout(() => {
+      if(!dayOverlayEl.classList.contains("open")){
+        if(overlayBodyObserver){ overlayBodyObserver.disconnect(); overlayBodyObserver = null; }
+        dayOverlayBody.innerHTML = "";
+        dayOverlayBody.style.height = "";
+        overlayCurrentContent = null;
+        overlayIsAnimating    = false;
+      }
+    }, 320);
+  }
+
+  // ── 이전/다음 날 이동 (버튼) ──
+  function shiftOverlayDay(direction){
+    if(!overlayCurrentDate || overlayIsAnimating) return;
+    const currentWeek = overlayCurrentContent ? overlayCurrentContent.querySelector(".week") : null;
+    const openBand = currentWeek
+      ? (timeBands.find(tb => currentWeek.classList.contains(`tb-open-${tb.key}`)) || null)
+      : null;
+    const next = getAdjacentDate(overlayCurrentDate, direction);
+    openDayOverlay(next, openBand ? openBand.key : null, direction);
+  }
+  dayPrevBtn.addEventListener("click", (e) => { e.stopPropagation(); shiftOverlayDay("prev"); });
+  dayNextBtn.addEventListener("click", (e) => { e.stopPropagation(); shiftOverlayDay("next"); });
+
+  // ── 스와이프 감지 ──
+  let _swStartX = 0, _swStartY = 0;
+  let _swActive = false;
+  let _swPending = null; // { contentEl, direction, targetDate }
+
+  dayOverlayCard.addEventListener("touchstart", (e) => {
+    if(overlayIsAnimating) return;
+    _swStartX  = e.touches[0].clientX;
+    _swStartY  = e.touches[0].clientY;
+    _swActive  = false;
+    _swPending = null;
+  }, { passive: true });
+
+  dayOverlayCard.addEventListener("touchmove", (e) => {
+    if(overlayIsAnimating) return;
+    const dx = e.touches[0].clientX - _swStartX;
+    const dy = e.touches[0].clientY - _swStartY;
+
+    if(!_swActive){
+      if(Math.abs(dx) < 10) return;
+      if(Math.abs(dx) <= Math.abs(dy)) return; // 수직 스크롤 우선
+      _swActive = true;
+    }
+
+    e.preventDefault();
+
+    // 처음 수평 이동이 확정된 순간 인접 콘텐츠 빌드
+    if(!_swPending && overlayCurrentDate){
+      const dir = dx > 0 ? "prev" : "next";
+      const targetDate = getAdjacentDate(overlayCurrentDate, dir);
+      const currentWeek = overlayCurrentContent ? overlayCurrentContent.querySelector(".week") : null;
+      const openBand = currentWeek
+        ? (timeBands.find(tb => currentWeek.classList.contains(`tb-open-${tb.key}`)) || null)
+        : null;
+      const { contentEl, weekEl, microEl } = buildSlideContent(targetDate, openBand ? openBand.key : null);
+      const baseX = dir === "next" ? "100%" : "-100%";
+      contentEl.style.transition = "none";
+      contentEl.style.transform  = `translateX(${baseX})`;
+      dayOverlayBody.appendChild(contentEl);
+      applySlideState(targetDate, weekEl, microEl, openBand ? openBand.key : null);
+      _swPending = { contentEl, direction: dir, targetDate };
+    }
+
+    // 실시간 양쪽 콘텐츠 이동
+    if(overlayCurrentContent){
+      overlayCurrentContent.style.transition = "none";
+      overlayCurrentContent.style.transform  = `translateX(${dx}px)`;
+    }
+    if(_swPending){
+      const baseX = _swPending.direction === "next" ? dayOverlayBody.offsetWidth : -dayOverlayBody.offsetWidth;
+      _swPending.contentEl.style.transition = "none";
+      _swPending.contentEl.style.transform  = `translateX(${baseX + dx}px)`;
+    }
+  }, { passive: false });
+
+  dayOverlayCard.addEventListener("touchend", () => {
+    if(!_swActive) return;
+    const EASING = "transform 0.3s cubic-bezier(0.25, 0.8, 0.3, 1)";
+    const dx = _swPending && overlayCurrentContent
+      ? parseFloat(overlayCurrentContent.style.transform.replace("translateX(","")) || 0
+      : 0;
+
+    if(_swPending && Math.abs(dx) > 50){
+      // 스와이프 완료 → 슬라이드 마저 진행
+      overlayIsAnimating = true;
+      const exitTo   = _swPending.direction === "next" ? "-100%" : "100%";
+      const old      = overlayCurrentContent;
+      const newEl    = _swPending.contentEl;
+      syncBodyHeight(newEl);
+      if(old){ old.style.transition = EASING; old.style.transform = `translateX(${exitTo})`; }
+      newEl.style.transition = EASING;
+      newEl.style.transform  = "translateX(0)";
+      overlayCurrentDate = _swPending.targetDate;
+      dayOverlayTitle.textContent = formatMD(new Date(overlayCurrentDate + "T00:00:00"));
+      newEl.addEventListener("transitionend", () => {
+        if(old) old.remove();
+        overlayCurrentContent = newEl;
+        overlayIsAnimating = false;
+      }, { once: true });
+    } else {
+      // 스와이프 취소 → 원위치 복귀
+      if(overlayCurrentContent){
+        overlayCurrentContent.style.transition = EASING;
+        overlayCurrentContent.style.transform  = "translateX(0)";
+      }
+      if(_swPending){
+        const fromX = _swPending.direction === "next" ? "100%" : "-100%";
+        _swPending.contentEl.style.transition = EASING;
+        _swPending.contentEl.style.transform  = `translateX(${fromX})`;
+        const el = _swPending.contentEl;
+        el.addEventListener("transitionend", () => el.remove(), { once: true });
+      }
+    }
+    _swActive  = false;
+    _swPending = null;
+  });
+
+  // 닫기 트리거 — ✕ 버튼 / 배경 탭 / Escape 키
+  dayOverlayClose.addEventListener("click", closeDayOverlay);
+  dayOverlayEl.addEventListener("click", (e) => {
+    if(e.target === dayOverlayEl) closeDayOverlay();
+  });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"
+       && dayOverlayEl.classList.contains("open")
+       && (modalOverlay.style.display === "none" || !modalOverlay.style.display)){
+      closeDayOverlay();
+    }
+  });
+
+  // ── 인증 / config fetch ────────────────────────────────────
+
+  async function fetchInit(year, monthIndex){
+    loadingBadge.classList.add("visible");
+    document.body.classList.add("is-loading");
+    calendarEl.classList.add("is-loading");
+
+    try {
+      const adj  = getAdjacentMonths(year, monthIndex);
+      const prev = adj[0];
+      const next = adj[1];
+      const start       = `${prev.year}-${pad2(prev.month + 1)}-01`;
+      const nextLastDay = new Date(next.year, next.month + 1, 0).getDate();
+      const end         = `${next.year}-${pad2(next.month + 1)}-${pad2(nextLastDay)}`;
+
+      const res  = await fetch(`${PROXY_URL}?action=init&start=${start}&end=${end}&k=${encodeURIComponent(authKey)}`);
+      const json = await res.json();
+      if(json.error) throw json;
+
+      // Forms config 채우기
+      _formUrl = json.formUrl;
+      _entry   = json.entry;
+      _timeMap = json.timeMap;
+
+      // slotCache 채우기 (renderMonth 호출 시 캐시 히트)
+      if(json.slots){
+        const buckets = {};
+        Object.entries(json.slots).forEach(([slotId, state]) => {
+          const mk = slotId.slice(0, 7);
+          if(!buckets[mk]) buckets[mk] = {};
+          buckets[mk][slotId] = state;
+        });
+        Object.entries(buckets).forEach(([mk, slots]) => {
+          slotCache[mk] = slots;
+        });
+      }
+    } finally {
+      loadingBadge.classList.remove("visible");
+      document.body.classList.remove("is-loading");
+      calendarEl.classList.remove("is-loading");
+    }
+  }
+
+  function handleAuthFailure(){
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    authKey = "";
+    showAuthModal();
+  }
+
+  async function initApp(){
+    if(!authKey){ showAuthModal(); return; }
+    try{
+      await fetchInit(currentYear, currentMonth);
+      renderMonth(currentYear, currentMonth);
+    } catch(e){
+      if(e.code === "AUTH") handleAuthFailure();
+    }
+  }
+
+  function showAuthModal(){
+    authError.textContent = "";
+    authInput.value = "";
+    authOverlay.style.display = "flex";
+    setTimeout(() => authInput.focus(), 50);
+  }
+
+  function hideAuthModal(){
+    authOverlay.style.display = "none";
+  }
+
+  async function attemptAuth(){
+    const candidate = authInput.value.trim();
+    if(!candidate) return;
+    authBtn.disabled = true;
+    authError.textContent = "";
+    try{
+      authKey = candidate;
+      await fetchInit(currentYear, currentMonth);
+      localStorage.setItem(AUTH_STORAGE_KEY, candidate);
+      hideAuthModal();
+      renderMonth(currentYear, currentMonth);
+    } catch(e){
+      authKey = "";
+      authError.textContent = e.code === "AUTH"
+        ? "비밀번호가 올바르지 않습니다."
+        : "연결 오류가 발생하였습니다.";
+    } finally{
+      authBtn.disabled = false;
+    }
+  }
+
+  authBtn.addEventListener("click", attemptAuth);
+  authInput.addEventListener("keydown", (e) => { if(e.key === "Enter") attemptAuth(); });
+  authReset.addEventListener("click", () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    authKey = "";
+    authError.textContent = "초기화되었습니다. 새 비밀번호를 입력하세요.";
+    authInput.value = "";
+    authInput.focus();
+  });
+
+  // ─────────────────────────────────────────────────────────
+
+  // 뷰포트 폭 980px 기준 모바일 ↔ 데스크탑 전환 시 상태 정리
+  let _prevWide = window.innerWidth >= 980;
+  window.addEventListener("resize", () => {
+    const isWide = window.innerWidth >= 980;
+    if(_prevWide && !isWide){
+      // 데스크탑 → 모바일: 펼쳐진 .slot-row 모두 접기
+      const calendarInner = document.querySelector(".calendar-inner");
+      document.querySelectorAll(".week").forEach(w => {
+        timeBands.forEach(tb => {
+          if(w.classList.contains(`tb-open-${tb.key}`)){
+            w.classList.remove(`tb-open-${tb.key}`);
+            w.querySelectorAll(`.slot-row[data-time-key="${tb.key}"] .al-icon`)
+             .forEach(el => { el.textContent = "▶"; });
+          }
+        });
+      });
+      if(calendarInner) calendarInner.classList.remove("expanded");
+    } else if(!_prevWide && isWide){
+      // 모바일 → 데스크탑: day-overlay 닫기 (CSS display:none만으로는 .open 클래스·스크롤 잠금 미해제)
+      if(dayOverlayEl.classList.contains("open")) closeDayOverlay();
+    }
+    _prevWide = isWide;
+  });
+</script>
+</body>
+</html>

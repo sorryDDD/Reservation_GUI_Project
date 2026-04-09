@@ -523,6 +523,61 @@
       cursor: pointer;
     }
     .restriction-popup-close:active{ opacity: 0.8; }
+    .restriction-popup-proceed{
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      border: 1.5px solid #7c3aed;
+      border-radius: 10px;
+      background: #fff;
+      color: #7c3aed;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .restriction-popup-proceed:active{ opacity: 0.8; }
+    .restriction-popup-full-title{
+      font-weight: 800;
+      font-size: 15px;
+      color: #b44;
+      margin-bottom: 6px;
+    }
+    .restriction-popup-full-msg{
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .restriction-popup-close.full-close{
+      background: #b44;
+    }
+    .restriction-popup-proceed.full-proceed{
+      border-color: #b44;
+      color: #b44;
+    }
+    .restriction-popup-booked-title{
+      font-weight: 800;
+      font-size: 15px;
+      color: #e3b131;
+      margin-bottom: 6px;
+    }
+    .restriction-popup-booked-msg{
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .restriction-popup-close.booked-close{
+      background: #f8d06f;
+      color: #fff;
+    }
+    .restriction-popup-proceed.booked-proceed{
+      border-color: #fed366;
+      color: #e3b131;
+    }
 
     /* 내 예약 현황 — 하단 고정 바 */
     .my-bookings{
@@ -627,6 +682,9 @@
       max-width: 860px;
       margin: 0 auto;
       padding: 20px 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     .info-panel-text{
       margin: 0;
@@ -638,11 +696,28 @@
       line-height: 1.7;
       color: var(--muted);
       white-space: pre-wrap;
+      flex: 1;
+      min-height: 80px;
+    }
+    .info-panel-log{
+      margin: 0;
+      padding: 14px 16px;
+      border: var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--muted);
+      white-space: pre-wrap;
+      flex: 1;
+      min-height: 80px;
+      overflow-y: auto;
     }
 
     @media (max-width: 986px){
       .info-panel{ padding: 16px 0 16px; }
       .info-panel-text{ border-radius: 0; border-left: none; border-right: none; }
+      .info-panel-log{ border-radius: 0; border-left: none; border-right: none; }
     }
 
     /* MODAL: iframe 오버레이 */
@@ -932,8 +1007,9 @@
 
   <!-- INFO PANEL -->
   <div class="info-panel" id="info-panel">
+    <p class="info-panel-log" id="info-panel-log"></p>
     <p class="info-panel-text">
-      비공개 베타 | 마지막 업데이트 26-04-08
+      마지막 업데이트 26-04-09
     </p>
   </div>
   <!-- /INFO PANEL -->
@@ -1005,11 +1081,11 @@
 
 <script>
   const timeBands = [
-    { key: "T1", label: "1:00 ~" },
-    { key: "T2", label: "2:00 ~" },
-    { key: "T3", label: "3:00 ~" },
-    { key: "T4", label: "4:00 ~" },
-    { key: "T5", label: "5:00 ~" },
+    { key: "T1", label: "1:00" },
+    { key: "T2", label: "2:00" },
+    { key: "T3", label: "3:00" },
+    { key: "T4", label: "4:00" },
+    { key: "T5", label: "5:00" },
   ];
   const rooms = [1,2,3,4,5,6,7,8];
 
@@ -1279,6 +1355,7 @@
     }
 
     html += `<button class="restriction-popup-close">확인</button>`;
+    html += `<button class="restriction-popup-proceed">그래도 예약할게요</button>`;
     popup.innerHTML = html;
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
@@ -1287,7 +1364,87 @@
       if(e.target === overlay || e.target.classList.contains("restriction-popup-close")){
         overlay.remove();
       }
+      if(e.target.classList.contains("restriction-popup-proceed")){
+        overlay.remove();
+        proceedBooking(slotEl);
+      }
     });
+  }
+
+  // 만석 슬롯 팝업
+  function showFullPopup(slotEl){
+    document.querySelector(".restriction-popup-overlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "restriction-popup-overlay";
+
+    const popup = document.createElement("div");
+    popup.className = "restriction-popup";
+
+    const slotLabel = `${formatMD(new Date(slotEl.dataset.date + "T00:00:00"))} ${slotEl.dataset.timeLabel} ${slotEl.dataset.room}번방`;
+
+    let html = `<div class="restriction-popup-full-title">예약 인원 초과</div>`;
+    html += `<div class="restriction-popup-full-msg">${slotLabel}<br>예약 인원이 가득 찼습니다.</div>`;
+    html += `<button class="restriction-popup-close full-close">확인</button>`;
+    html += `<button class="restriction-popup-proceed full-proceed">그래도 예약할게요</button>`;
+    popup.innerHTML = html;
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (e) => {
+      if(e.target === overlay || e.target.classList.contains("restriction-popup-close")){
+        overlay.remove();
+      }
+      if(e.target.classList.contains("restriction-popup-proceed")){
+        overlay.remove();
+        proceedBooking(slotEl);
+      }
+    });
+  }
+
+  // 본인 예약 슬롯 팝업
+  function showBookedPopup(slotEl){
+    document.querySelector(".restriction-popup-overlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "restriction-popup-overlay";
+
+    const popup = document.createElement("div");
+    popup.className = "restriction-popup";
+
+    const slotLabel = `${formatMD(new Date(slotEl.dataset.date + "T00:00:00"))} ${slotEl.dataset.timeLabel} ${slotEl.dataset.room}번방`;
+
+    let html = `<div class="restriction-popup-booked-title">이미 예약된 슬롯</div>`;
+    html += `<div class="restriction-popup-booked-msg">${slotLabel}<br>이미 본인의 예약이 존재합니다.</div>`;
+    html += `<button class="restriction-popup-close booked-close">확인</button>`;
+    html += `<button class="restriction-popup-proceed booked-proceed">그래도 예약할게요</button>`;
+    popup.innerHTML = html;
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (e) => {
+      if(e.target === overlay || e.target.classList.contains("restriction-popup-close")){
+        overlay.remove();
+      }
+      if(e.target.classList.contains("restriction-popup-proceed")){
+        overlay.remove();
+        proceedBooking(slotEl);
+      }
+    });
+  }
+
+  // 제한·만석 팝업에서 사용자가 예약을 강행할 때 공통 처리
+  function proceedBooking(slotEl){
+    clearSelected();
+    slotEl.classList.add("selected");
+    const url = buildPrefillUrl({
+      name: inName.value,
+      isoDate: slotEl.dataset.date,
+      timeBandLabel: slotEl.dataset.timeLabel,
+      roomNum: Number(slotEl.dataset.room),
+    });
+    const summaryText = `${formatMD(new Date(slotEl.dataset.date + "T00:00:00"))} · ${slotEl.dataset.timeLabel} · ${slotEl.dataset.room}번방`;
+    openModal(url, summaryText);
   }
 
   // 사용자 역할 토글 (관찰자 / 임상가)
@@ -1733,7 +1890,7 @@
       icon.textContent = "▶";
       const lbl = document.createElement("span");
       lbl.className = "slot-row-label";
-      lbl.textContent = tb.label.replace(" ~", "");
+      lbl.textContent = tb.label;
       const dots = document.createElement("span");
       dots.className = "header-dots";
       const userDot = document.createElement("span");
@@ -1793,6 +1950,14 @@
           if(userRole === "clinician") return;
           if(slot.classList.contains("s-restricted") && slot.dataset.restrictionReasons){
             showRestrictionPopup(slot);
+            return;
+          }
+          if(slot.classList.contains("s-user-match")){
+            showBookedPopup(slot);
+            return;
+          }
+          if(slot.classList.contains("s-full")){
+            showFullPopup(slot);
             return;
           }
           if(slot.dataset.disabled === "1") return;

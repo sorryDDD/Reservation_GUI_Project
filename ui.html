@@ -19,11 +19,13 @@
       --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
     *{box-sizing:border-box;}
-    body{font-family:var(--font); margin:0; background:var(--soft2); color:#111; padding-bottom:44px;}
+    body{font-family:var(--font); margin:0; background:var(--soft2); color:#111; padding-bottom:44px; overscroll-behavior-y:none;}
 
     .sticky-header{
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       z-index: 100;
     }
     .kv{
@@ -170,7 +172,6 @@
     .calendar{
       background:var(--bg);
       border:var(--border);
-      border-top: none;
       border-radius: 0;
       overflow-x:auto;
       overflow-y:hidden;
@@ -1089,7 +1090,7 @@
   ];
   const rooms = [1,2,3,4,5,6,7,8];
 
-  const PROXY_URL = "https://script.google.com/macros/s/AKfycbyTzuSoeAkJHRPZtfmDmxJCoRHv6pfgzFG0zxpMswcKhZQCZ6fSTj2JQKhEID0ncF2wyg/exec";
+  const PROXY_URL = "https://script.google.com/macros/s/AKfycbzO5X8vxRD-zYNzP6WClwitCkV8PrlUGoOIUvkIRgkvIJw6HfGQrqZI9r7wsF1M30Bf9g/exec";
 
   // 인증 키 (localStorage 저장, 초기 빈 문자열)
   const AUTH_STORAGE_KEY = "reservation_gui_auth";
@@ -2077,6 +2078,17 @@
   const authError   = document.getElementById("auth-error");
   const authBtn     = document.getElementById("auth-btn");
   const authReset   = document.getElementById("auth-reset");
+
+  // fixed 헤더 높이만큼 .wrap padding-top 보정
+  const _stickyHeader = document.querySelector(".sticky-header");
+  const _wrap = document.querySelector(".wrap");
+  function adjustWrapPadding(){
+    if(_stickyHeader && _wrap){
+      _wrap.style.paddingTop = _stickyHeader.offsetHeight + "px";
+    }
+  }
+  adjustWrapPadding();
+  window.addEventListener("resize", adjustWrapPadding);
 
   initApp();
 

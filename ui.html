@@ -959,6 +959,81 @@
       cursor:pointer; text-decoration:underline; background:none;
       border:none; padding:0;
     }
+
+    /* ── 생활연령 계산기 ── */
+    .refresh-bar{ gap: 10px; }
+    .age-calc-trigger{
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 14px;
+      border: var(--border); border-radius: 999px;
+      background: var(--bg); font: inherit;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .age-calc-trigger:hover{ background: var(--soft); color: #333; }
+    .age-calc-trigger:active{ transform: translateY(1px); }
+    .age-calc-overlay{
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 9000;
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .age-calc-card{
+      position: relative; background: #fff;
+      border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.12);
+      padding: 32px; width: 100%; max-width: 420px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .age-calc-overlay-close{
+      position: absolute; top: 14px; right: 14px;
+      background: none; border: none; font-size: 16px;
+      color: #999; cursor: pointer; line-height: 1;
+      padding: 4px 6px; border-radius: 6px;
+    }
+    .age-calc-overlay-close:hover{ background: #f0f0f0; color: #333; }
+    .age-calc-title{ margin: 0 0 4px; font-size: 18px; font-weight: 700; color: #1a1a2e; padding-right: 28px; }
+    .age-calc-subtitle{ margin: 0 0 24px; font-size: 13px; color: #888; }
+    .age-calc-fields{ display: flex; flex-direction: column; gap: 16px; }
+    .age-calc-field label{ display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 6px; }
+    .age-calc-field input{
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #e0e0e0; border-radius: 8px;
+      font-size: 15px; color: #222; outline: none;
+      background: #fafafa; font-family: monospace; letter-spacing: 0.04em;
+    }
+    .age-calc-field input:focus{ border-color: #2c3e8c; }
+    .age-calc-error{
+      display: none; margin: 0; font-size: 13px; color: #e05c5c;
+      background: #fff5f5; border-radius: 8px; padding: 10px 14px;
+    }
+    .age-calc-error.visible{ display: block; }
+    .age-calc-btn-row{ display: flex; gap: 10px; margin-top: 4px; }
+    .age-calc-btn-calc{
+      flex: 1; padding: 11px; background: #2c3e8c; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .age-calc-btn-calc:hover{ background: #243476; }
+    .age-calc-btn-reset{
+      padding: 11px 18px; background: transparent; color: #888;
+      border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 14px; cursor: pointer;
+    }
+    .age-calc-btn-reset:hover{ background: #f5f5f5; }
+    .age-calc-result{ display: none; margin-top: 24px; }
+    .age-calc-result.visible{ display: block; }
+    .age-calc-result-main{ background: #f0f4ff; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 12px; }
+    .age-calc-result-main .label{ margin: 0 0 6px; font-size: 13px; color: #5567a8; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .age-calc-result-main .value{ margin: 0; font-size: 34px; font-weight: 800; color: #2c3e8c; letter-spacing: -0.02em; }
+    .age-calc-result-main .value span{ font-size: 17px; font-weight: 500; margin-left: 2px; }
+    .age-calc-chips{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .age-calc-chip{ background: #f8f9fb; border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid #ebebeb; }
+    .age-calc-chip.accent{ background: #eef2ff; border-color: #c7d0f8; }
+    .age-calc-chip .chip-label{ margin: 0 0 4px; font-size: 11px; color: #999; font-weight: 600; }
+    .age-calc-chip.accent .chip-label{ color: #5567a8; }
+    .age-calc-chip .chip-value{ margin: 0; font-size: 22px; font-weight: 700; color: #333; }
+    .age-calc-chip.accent .chip-value{ color: #2c3e8c; }
+    .age-calc-chip .chip-unit{ font-size: 11px; font-weight: 500; margin-left: 2px; color: #999; }
+    .age-calc-result-summary{ margin: 12px 0 0; font-size: 12px; color: #aaa; text-align: center; }
+    .age-calc-result-range{ margin: 6px 0 0; font-size: 12px; color: #bbb; text-align: center; }
   </style>
 </head>
 <body>
@@ -1004,6 +1079,9 @@
       <span class="refresh-icon" aria-hidden="true">↻</span>
       새로고침
     </button>
+    <button class="age-calc-trigger" id="age-calc-trigger" type="button" title="생활연령 계산기">
+      🎂 생활연령
+    </button>
   </div>
 
   <!-- INFO PANEL -->
@@ -1034,6 +1112,56 @@
       <p class="auth-error" id="auth-error"></p>
       <button class="auth-btn" id="auth-btn" type="button">확인</button>
       <button class="auth-reset" id="auth-reset" type="button">저장된 비밀번호 초기화</button>
+    </div>
+  </div>
+
+  <!-- 생활연령 계산기 오버레이 -->
+  <div class="age-calc-overlay" id="age-calc-overlay">
+    <div class="age-calc-card">
+      <button class="age-calc-overlay-close" id="age-calc-overlay-close" type="button" aria-label="닫기">✕</button>
+      <p class="age-calc-title">Chronological Age Calculator</p>
+      <p class="age-calc-subtitle">생활연령 계산기</p>
+
+      <div class="age-calc-fields">
+        <div class="age-calc-field">
+          <label for="age-calc-dob">생년월일 Date of Birth</label>
+          <input id="age-calc-dob" type="text" placeholder="YYYY-MM-DD" maxlength="10" />
+        </div>
+        <div class="age-calc-field">
+          <label for="age-calc-ref">기준일 Reference Date</label>
+          <input id="age-calc-ref" type="text" placeholder="YYYY-MM-DD" maxlength="10" />
+        </div>
+
+        <p id="age-calc-error" class="age-calc-error"></p>
+
+        <div class="age-calc-btn-row">
+          <button class="age-calc-btn-calc" id="age-calc-btn-calc" type="button">계산하기</button>
+          <button class="age-calc-btn-reset" id="age-calc-btn-reset" type="button">초기화</button>
+        </div>
+      </div>
+
+      <div class="age-calc-result" id="age-calc-result">
+        <div class="age-calc-result-main">
+          <p class="label">역연령</p>
+          <p class="value" id="age-calc-main-value"></p>
+        </div>
+        <div class="age-calc-chips">
+          <div class="age-calc-chip">
+            <p class="chip-label">연</p>
+            <p class="chip-value" id="age-calc-chip-years"></p>
+          </div>
+          <div class="age-calc-chip accent">
+            <p class="chip-label">개월</p>
+            <p class="chip-value" id="age-calc-chip-months"></p>
+          </div>
+          <div class="age-calc-chip">
+            <p class="chip-label">일</p>
+            <p class="chip-value" id="age-calc-chip-days"></p>
+          </div>
+        </div>
+        <p class="age-calc-result-summary" id="age-calc-summary"></p>
+        <p class="age-calc-result-range" id="age-calc-range"></p>
+      </div>
     </div>
   </div>
 
@@ -2551,6 +2679,122 @@
     }
     _prevWide = isWide;
   });
+
+  /* ── 생활연령 계산기 ────────────────────────────────────── */
+  (function(){
+    function calculateAge(dob, ref) {
+      let years  = ref.getFullYear() - dob.getFullYear();
+      let months = ref.getMonth()    - dob.getMonth();
+      let days   = ref.getDate()     - dob.getDate();
+      if (days < 0) {
+        months--;
+        days += new Date(ref.getFullYear(), ref.getMonth(), 0).getDate();
+      }
+      if (months < 0) { years--; months += 12; }
+      return { years, months, days, totalMonths: years * 12 + months };
+    }
+    function toYMD(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    function parseYMD(str) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+      const [y, m, d] = str.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+      return date;
+    }
+    function formatInput(raw) {
+      const digits = raw.replace(/\D/g, "").slice(0, 8);
+      if (digits.length <= 4) return digits;
+      if (digits.length <= 6) return `${digits.slice(0,4)}-${digits.slice(4)}`;
+      return `${digits.slice(0,4)}-${digits.slice(4,6)}-${digits.slice(6)}`;
+    }
+
+    const overlay      = document.getElementById("age-calc-overlay");
+    const dobInput     = document.getElementById("age-calc-dob");
+    const refInput     = document.getElementById("age-calc-ref");
+    const errorEl      = document.getElementById("age-calc-error");
+    const calcBtn      = document.getElementById("age-calc-btn-calc");
+    const resetBtn     = document.getElementById("age-calc-btn-reset");
+    const resultEl     = document.getElementById("age-calc-result");
+    const mainValEl    = document.getElementById("age-calc-main-value");
+    const chipYearsEl  = document.getElementById("age-calc-chip-years");
+    const chipMonthsEl = document.getElementById("age-calc-chip-months");
+    const chipDaysEl   = document.getElementById("age-calc-chip-days");
+    const summaryEl    = document.getElementById("age-calc-summary");
+    const rangeEl      = document.getElementById("age-calc-range");
+
+    function openOverlay() {
+      refInput.value = toYMD(new Date());
+      overlay.style.display = "flex";
+      dobInput.focus();
+    }
+    function closeOverlay() {
+      overlay.style.display = "none";
+    }
+
+    document.getElementById("age-calc-trigger").addEventListener("click", openOverlay);
+    document.getElementById("age-calc-overlay-close").addEventListener("click", closeOverlay);
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeOverlay(); });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && overlay.style.display === "flex") closeOverlay();
+    });
+
+    function clearResult() {
+      resultEl.classList.remove("visible");
+      errorEl.classList.remove("visible");
+      errorEl.textContent = "";
+    }
+    function handleInput(e) {
+      const prev = e.target.value;
+      const next = formatInput(e.target.value);
+      e.target.value = next;
+      if (next.length > prev.length && e.target.selectionStart === prev.length) {
+        e.target.setSelectionRange(next.length, next.length);
+      }
+      clearResult();
+    }
+    dobInput.addEventListener("input", handleInput);
+    refInput.addEventListener("input", handleInput);
+    calcBtn.addEventListener("click", handleCalculate);
+    resetBtn.addEventListener("click", handleReset);
+    dobInput.addEventListener("keydown", e => { if (e.key === "Enter") handleCalculate(); });
+    refInput.addEventListener("keydown", e => { if (e.key === "Enter") handleCalculate(); });
+
+    function showError(msg) {
+      resultEl.classList.remove("visible");
+      errorEl.textContent = msg;
+      errorEl.classList.add("visible");
+    }
+    function handleCalculate() {
+      const d = parseYMD(dobInput.value);
+      const r = parseYMD(refInput.value);
+      if (!d) { showError("생년월일을 올바른 형식으로 입력하세요. (YYYY-MM-DD)"); return; }
+      if (!r) { showError("기준일을 올바른 형식으로 입력하세요. (YYYY-MM-DD)"); return; }
+      if (d > r) { showError("생년월일이 기준일보다 늦을 수 없습니다."); return; }
+      errorEl.classList.remove("visible");
+      renderResult(calculateAge(d, r), dobInput.value, refInput.value);
+    }
+    function handleReset() {
+      dobInput.value = "";
+      refInput.value = toYMD(new Date());
+      clearResult();
+      dobInput.focus();
+    }
+    function renderResult(ag, dobStr, refStr) {
+      const cu = (v, u) => `${v}<span class="chip-unit">${u}</span>`;
+      mainValEl.innerHTML = `${ag.years}<span>y</span> ${ag.months}<span>m</span> ${ag.days}<span>d</span>`;
+      chipYearsEl.innerHTML  = cu(ag.years, "세");
+      chipMonthsEl.innerHTML = cu(ag.totalMonths, "mo");
+      chipDaysEl.innerHTML   = cu(ag.days, "일");
+      summaryEl.textContent = `총 ${ag.totalMonths}개월 (${ag.years}년 ${ag.months}개월 ${ag.days}일)`;
+      rangeEl.textContent   = `${dobStr} → ${refStr}`;
+      resultEl.classList.add("visible");
+    }
+  })();
 </script>
 </body>
 </html>
